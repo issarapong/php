@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # PHP-Apache Service
+  web:
+    image: php:8.2-apache
+    container_name: php_lab_web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./config/php.ini:/usr/local/etc/php/php.ini
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+    depends_on:
+      - mysql
+      - redis
+      - memcached
+    networks:
+      - php_lab_network
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+      docker-php-ext-install mysqli pdo pdo_mysql &&
+      pecl install redis memcached &&
+      docker-php-ext-enable redis memcached &&
+      apache2-foreground
+      "
+
+  # MySQL Database Service
+  mysql:
+    image: mysql:8.0
+    container_name: php_lab_mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: php_lab_db
+      MYSQL_USER: php_user
+      MYSQL_PASSWORD: php_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - php_lab_network
+
+  # phpMyAdmin Service
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: php_lab_phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: php_user
+      PMA_PASSWORD: php_password
+      MYSQL_ROOT_PASSWORD: root_password
+    depends_on:
+      - mysql
+    networks:
+      - php_lab_network
+
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: php_lab_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - php_lab_network
+    command: redis-server --appendonly yes
+
+  # Memcached Service
+  memcached:
+    image: memcached:1.6-alpine
+    container_name: php_lab_memcached
+    ports:
+      - "11211:11211"
+    networks:
+      - php_lab_network
+    command: memcached -m 64
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  php_lab_network:
+    driver: bridge

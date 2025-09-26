@@ -1,0 +1,10 @@
+# Deny access to uploaded files directory
+# Only allow access through the application
+Order Deny,Allow
+Deny from all
+
+# Allow image files to be served
+<Files ~ "\.(jpg|jpeg|png|gif|webp)$">
+    Order Allow,Deny
+    Allow from all
+</Files>
